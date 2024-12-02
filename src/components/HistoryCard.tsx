@@ -12,14 +12,15 @@ export function HistoryCard() {
 			alignItems="center"
 			justifyContent="space-between"
 		>
-			<GS.VStack mr="$5">
+			<GS.VStack flex={1} mr="$5">
 				<GS.Heading
 					color="$white"
 					fontSize="$md"
 					textTransform="capitalize"
 					fontFamily="$heading"
+					numberOfLines={1}
 				>
-					Costas
+					Costas 
 				</GS.Heading>
 				<GS.Text color="$gray100" fontSize="$lg" numberOfLines={1}>
 					Puxada frontal
