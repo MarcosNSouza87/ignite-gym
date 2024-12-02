@@ -14,19 +14,43 @@ import { Button } from '@components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { AuthNavigatorRoutesProps } from '@routes/auth.routes';
 
+import { useForm, Controller } from 'react-hook-form';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+
+type FormDataProps = {
+	email: string;
+	password: string;
+};
+
+const signUpSchema = yup.object({
+	email: yup.string().required('Informe o E-mail.').email('E-mail inválido.'),
+	password: yup
+		.string()
+		.required('Informe a senha.')
+		.min(6, 'A senha deve ter pelo menos 6 digítos.'),
+});
 
 export function SignIn() {
 	const { navigate } = useNavigation<AuthNavigatorRoutesProps>();
 
+	const {
+		control,
+		handleSubmit,
+		formState: { errors },
+	} = useForm<FormDataProps>({
+		resolver: yupResolver(signUpSchema),
+	});
+
 	function handleNewAccount() {
-		navigate("signUp");
-		
+		navigate('signUp');
 	}
 
 	return (
-		<ScrollView contentContainerStyle={{flexGrow: 1}}
-    showsVerticalScrollIndicator={false}
-    >
+		<ScrollView
+			contentContainerStyle={{ flexGrow: 1 }}
+			showsVerticalScrollIndicator={false}
+		>
 			<VStack flex={1}>
 				<Image
 					w="$full"
@@ -45,19 +69,45 @@ export function SignIn() {
 					</Center>
 					<Center gap="$2">
 						<Heading color="$gray100">Acesse sua conta</Heading>
-						<Input
-							placeholder="E-mail"
-							keyboardType="email-address"
-							autoCapitalize="none"
+						<Controller
+							control={control}
+							name="email"
+							render={({ field: { onChange, value } }) => (
+								<Input
+									value={value}
+									onChangeText={onChange}
+									placeholder="E-mail"
+									keyboardType="email-address"
+									autoCapitalize="none"
+									errorMessage={errors.email?.message}
+								/>
+							)}
 						/>
-						<Input placeholder="Senha" secureTextEntry />
+						<Controller
+							control={control}
+							name="password"
+							render={({ field: { onChange, value } }) => (
+								<Input
+									onChangeText={onChange}
+									value={value}
+									placeholder="Senha"
+									secureTextEntry
+									autoCapitalize="none"
+									errorMessage={errors.password?.message}
+								/>
+							)}
+						/>
 						<Button title="Acessar" />
 					</Center>
 					<Center flex={1} justifyContent="flex-end" mt="$4">
 						<Text color="$gray100" fontSize="$sm" mb="$3" fontFamily="$body">
 							Ainda não tenho acesso?
 						</Text>
-						<Button title="Criar conta" variant="outline" onPress={handleNewAccount}/>
+						<Button
+							title="Criar conta"
+							variant="outline"
+							onPress={handleSubmit(handleNewAccount)}
+						/>
 					</Center>
 				</VStack>
 			</VStack>
