@@ -3,49 +3,65 @@ import { Input } from '@components/Input';
 import { ScreenHeader } from '@components/ScreenHeader';
 import { UserPhoto } from '@components/UserPhoto';
 import * as GS from '@gluestack-ui/themed';
-import { Alert, ScrollView, TouchableOpacity } from 'react-native';
-import * as ImagePicker from 'expo-image-picker'
-import * as FileSystem from 'expo-file-system'
+import { ScrollView, TouchableOpacity } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useState } from 'react';
+import { ToastMessage } from '@components/ToastMessage';
 
 export function Profile() {
-	const [userPhoto, setUserPhoto] = useState("https://github.com/MarcosNSouza87.png");
+	const [userPhoto, setUserPhoto] = useState(
+		'https://github.com/MarcosNSouza87.png',
+	);
+
+	const toast = GS.useToast();
 
 	async function handleUserPhotoSelect() {
-		try{
-
+		try {
 			const photoSelected = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ['images'],
 				quality: 1,
 				aspect: [4, 4],
-				allowsEditing: true
+				allowsEditing: true,
 			});
-			if(photoSelected.canceled) {
-				return
+			if (photoSelected.canceled) {
+				return;
 			}
-			
-			const photoUri = photoSelected.assets[0].uri
-			if(photoUri){
-				const photoInfo = await FileSystem.getInfoAsync(photoUri) as {
-					size: number
+
+			const photoUri = photoSelected.assets[0].uri;
+			if (photoUri) {
+				const photoInfo = (await FileSystem.getInfoAsync(photoUri)) as {
+					size: number;
+				};
+
+
+				if (photoInfo.size && photoInfo.size / 1024 / 1024 > 5) {
+					return toast.show({
+						placement: 'top',
+						render: ({ id }) => (
+							<ToastMessage
+								id={id}
+								action="error"
+								title="Essa imagem é muito grande. Escolha uma de até 5Mb."
+								onClose={() => toast.close(id)}
+							/>
+						),
+					});
 				}
-				
-				if(photoInfo.size && (photoInfo.size / 1024 / 1024 ) > 5){
-					return Alert.alert('Essa imagem é muito grande. Escolha uma de até 5Mb')
-				}
-				
-				setUserPhoto(photoUri)
+
+				setUserPhoto(photoUri);
 			}
-		}catch(error){
-			console.log(error)
+		} catch (error) {
+			console.log(error);
 		}
 	}
 
 	return (
 		<GS.VStack>
 			<ScreenHeader title="Perfil" />
+
 			<ScrollView contentContainerStyle={{ paddingBottom: 36 }}>
-				<GS.Center mt="$6" mb='$20' px="$10">
+				<GS.Center mt="$6" mb="$20" px="$10">
 					<UserPhoto
 						source={{
 							uri: userPhoto,
@@ -80,7 +96,7 @@ export function Profile() {
 					>
 						Alterar senha
 					</GS.Heading>
-					<GS.Center w="$full" gap="$4" pb='$10'>
+					<GS.Center w="$full" gap="$4" pb="$10">
 						<Input placeholder="Senha antiga" bg="$gray600" secureTextEntry />
 						<Input placeholder="Nova Senha" bg="$gray600" secureTextEntry />
 						<Input
