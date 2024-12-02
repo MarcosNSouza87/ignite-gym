@@ -3,9 +3,44 @@ import { Input } from '@components/Input';
 import { ScreenHeader } from '@components/ScreenHeader';
 import { UserPhoto } from '@components/UserPhoto';
 import * as GS from '@gluestack-ui/themed';
-import { ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, ScrollView, TouchableOpacity } from 'react-native';
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system'
+import { useState } from 'react';
 
 export function Profile() {
+	const [userPhoto, setUserPhoto] = useState("https://github.com/MarcosNSouza87.png");
+
+	async function handleUserPhotoSelect() {
+		try{
+
+			const photoSelected = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ['images'],
+				quality: 1,
+				aspect: [4, 4],
+				allowsEditing: true
+			});
+			if(photoSelected.canceled) {
+				return
+			}
+			
+			const photoUri = photoSelected.assets[0].uri
+			if(photoUri){
+				const photoInfo = await FileSystem.getInfoAsync(photoUri) as {
+					size: number
+				}
+				
+				if(photoInfo.size && (photoInfo.size / 1024 / 1024 ) > 5){
+					return Alert.alert('Essa imagem é muito grande. Escolha uma de até 5Mb')
+				}
+				
+				setUserPhoto(photoUri)
+			}
+		}catch(error){
+			console.log(error)
+		}
+	}
+
 	return (
 		<GS.VStack>
 			<ScreenHeader title="Perfil" />
@@ -13,12 +48,12 @@ export function Profile() {
 				<GS.Center mt="$6" mb='$20' px="$10">
 					<UserPhoto
 						source={{
-							uri: 'https://github.com/MarcosNSouza87.png',
+							uri: userPhoto,
 						}}
 						alt="Foto do usuário"
 						size="xl"
 					/>
-					<TouchableOpacity>
+					<TouchableOpacity onPress={handleUserPhotoSelect}>
 						<GS.Text
 							color="$green500"
 							fontFamily="$heading"
