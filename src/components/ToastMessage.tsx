@@ -1,12 +1,4 @@
-import {
-	ToastDescription,
-	ToastTitle,
-	Toast,
-	Pressable,
-	Icon,
-	VStack,
-	HStack,
-} from '@gluestack-ui/themed';
+import * as GS from '@gluestack-ui/themed';
 
 import { X } from 'lucide-react-native';
 
@@ -26,25 +18,25 @@ export function ToastMessage({
 	onClose,
 }: Props) {
 	return (
-		<Toast
+		<GS.Toast
 			nativeID={`toast-${id}`}
 			action={action}
 			bgColor={action === 'success' ? '$green500' : '$red500'}
 			mt="$10"
 		>
-			<VStack space="xs" w="$full">
-					<Pressable onPress={onClose} alignSelf='flex-end'>
-						<Icon as={X} color="$coolGray50" size="md" />
-					</Pressable>
-					<ToastTitle color="$white" fontFamily="$heading">
-						{title}
-					</ToastTitle>
+			<GS.VStack space="xs" w="$full">
+				<GS.Pressable onPress={onClose} alignSelf="flex-end">
+					<GS.Icon as={X} color="$coolGray50" size="md" ml="$5" />
+				</GS.Pressable>
+				<GS.ToastTitle color="$white" fontFamily="$heading" numberOfLines={2}>
+					{title}
+				</GS.ToastTitle>
 				{description && (
-					<ToastDescription color="$white" fontFamily="$body">
+					<GS.ToastDescription color="$white" fontFamily="$body">
 						{description}
-					</ToastDescription>
+					</GS.ToastDescription>
 				)}
-			</VStack>
-		</Toast>
+			</GS.VStack>
+		</GS.Toast>
 	);
 }
