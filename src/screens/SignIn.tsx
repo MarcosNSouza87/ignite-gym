@@ -5,6 +5,7 @@ import {
 	Text,
 	Heading,
 	ScrollView,
+	useToast,
 } from '@gluestack-ui/themed';
 import BackgroundImg from '@assets/background.png';
 import Logo from '@assets/logo.svg';
@@ -17,6 +18,10 @@ import { AuthNavigatorRoutesProps } from '@routes/auth.routes';
 import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
+import { useAuth } from '@hooks/useAuth';
+import { AppError } from '@utils/AppError';
+import { useState } from 'react';
+import { ToastMessage } from '@components/ToastMessage';
 
 type FormDataProps = {
 	email: string;
@@ -32,7 +37,10 @@ const signUpSchema = yup.object({
 });
 
 export function SignIn() {
+	const { signIn } = useAuth();
 	const { navigate } = useNavigation<AuthNavigatorRoutesProps>();
+	const [isLoading, setIsLoading] = useState(false);
+	const toast = useToast();
 
 	const {
 		control,
@@ -44,6 +52,34 @@ export function SignIn() {
 
 	function handleNewAccount() {
 		navigate('signUp');
+	}
+	async function handleSignIn({ email, password }: FormDataProps) {
+		try {
+			//console.log({email, password})
+			setIsLoading(true);
+			const validate = await signIn(email, password);
+			//console.log(validate);
+			// navigate to other route
+			
+		} catch (error) {
+			const isAppError = error instanceof AppError;
+			console.log(error)
+			const title = isAppError
+				? error.message
+				: 'Não foi possível entrar. Tente novamente';
+			setIsLoading(false);
+			toast.show({
+				placement: 'top',
+				render: ({ id }) => (
+					<ToastMessage
+						id={id}
+						action="error"
+						title={title}
+						onClose={() => toast.close(id)}
+					/>
+				),
+			});
+		}
 	}
 
 	return (
@@ -97,7 +133,11 @@ export function SignIn() {
 								/>
 							)}
 						/>
-						<Button title="Acessar" />
+						<Button
+							title="Acessar"
+							onPress={handleSubmit(handleSignIn)}
+							isLoading={isLoading}
+						/>
 					</Center>
 					<Center flex={1} justifyContent="flex-end" mt="$4">
 						<Text color="$gray100" fontSize="$sm" mb="$3" fontFamily="$body">
@@ -106,7 +146,7 @@ export function SignIn() {
 						<Button
 							title="Criar conta"
 							variant="outline"
-							onPress={handleSubmit(handleNewAccount)}
+							onPress={handleNewAccount}
 						/>
 					</Center>
 				</VStack>
