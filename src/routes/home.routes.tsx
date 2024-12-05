@@ -7,7 +7,7 @@ import { Exercise } from '@screens/Exercise';
 
 type HomeRoutes = {
 	homeStack: undefined;
-	exercise: undefined;
+	exercise: {exerciseId: string};
 };
 
 export type HomeNavigatorRoutesProps = NativeStackNavigationProp<HomeRoutes>;

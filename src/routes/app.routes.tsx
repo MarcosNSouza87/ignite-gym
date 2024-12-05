@@ -15,7 +15,6 @@ import { HomeRoutes } from './home.routes';
 
 type AppRoutes = {
 	home: undefined;
-	exercise: undefined;
 	profile: undefined;
 	history: undefined;
 };
