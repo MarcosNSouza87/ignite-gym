@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react-native';
 import { useAuth } from '@hooks/useAuth';
 import defaultUserPhotoImg from '@assets/userPhotoDefault.png';
 import { TouchableOpacity } from 'react-native';
+import { api } from '@services/api';
 
 export function HomeHeader() {
 
@@ -12,7 +13,7 @@ export function HomeHeader() {
 	return (
 		<GS.HStack bg="$gray600" gap="$3" pt="$16" pb="$5" px="$8" alignItems="center">
 			<UserPhoto
-				source={user.avatar ? { uri: user.avatar } : defaultUserPhotoImg}
+				source={user.avatar ? { uri:`${api.defaults.baseURL}/avatar/${user.avatar}` } : defaultUserPhotoImg}
 				alt="imagem do usuario"
 				w="$16"
 				h="$16"

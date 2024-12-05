@@ -15,129 +15,57 @@ import { useAuth } from '@hooks/useAuth';
 import { Loading } from '@components/Loading';
 import { api } from '@services/api';
 import { AppError } from '@utils/AppError';
+import defaultUserPhotoImg from '@assets/userPhotoDefault.png';
 
 type FormDataProps = {
-	name: string;
+	name?: string;
 	email?: string;
+	old_password?: string;
+	password?: string | null;
+	confirm_password?: string | null;
 };
 
-type PasswordDataProps = {
-	password_old: string;
-	password: string;
-	password_confirm: string;
-};
-
-const UserUpdateSchema = yup.object({
-	name: yup.string().required('Informe o nome.'),
-	email: yup.string().email('E-mail inválido.'),
-});
-
-const PasswordUpdateSchema = yup.object({
-	password_old: yup.string().required('Informe a senha.'),
+const profileSchema = yup.object({
+	name: yup.string(),
 	password: yup
 		.string()
-		.required('Informe a senha.')
-		.min(6, 'A senha deve ter pelo menos 6 digítos.'),
-	password_confirm: yup
+		.min(6, 'A senha deve conter mais de 6 dígitos.')
+		.nullable()
+		.transform((value) => (!!value ? value : null)),
+	confirm_password: yup
 		.string()
-		.required('Confirme a senha.')
-		.oneOf([yup.ref('password'), ''], 'A confirmação da senha não confere.'),
+		.nullable()
+		.transform((value) => (!!value ? value : null))
+		.oneOf([yup.ref('password'), ''], 'A confirmação de senha não confere')
+		.when('password', {
+			is: (Field: any) => Field,
+			then: (schema) =>
+				schema
+					.nullable()
+					.required('Informe a confirmação da senha.')
+					.transform((value) => (!!value ? value : null)),
+		}),
 });
 
 export function Profile() {
 	const { user, updateUserProfile } = useAuth();
-	const [isLoading, setIsLoading] = useState(false);
+	const [isUpdating, setIsUpdating] = useState(false);
 
-	const [initialName, setInitialName] = useState(user.name);
-	const [userPhoto, setUserPhoto] = useState(
-		'https://github.com/MarcosNSouza87.png',
-	);
+	const [userPhoto, setUserPhoto] = useState(user.avatar);
 
 	const toast = GS.useToast();
 
-	const userFormData = useForm<FormDataProps>({
+	const {
+		control,
+		handleSubmit,
+		formState: { errors },
+	} = useForm<FormDataProps>({
 		defaultValues: {
 			name: user.name,
 			email: user.email,
 		},
-		resolver: yupResolver(UserUpdateSchema),
+		resolver: yupResolver(profileSchema),
 	});
-
-	const passwordFormData = useForm<PasswordDataProps>({
-		resolver: yupResolver(PasswordUpdateSchema),
-	});
-
-	async function handleProfileUpdate(data: FormDataProps) {
-		let title = '';
-		let action: 'success' | 'error' | undefined = 'success';
-		try {
-			setIsLoading(true);
-			await api.put('/users', { name: data.name });
-			title = 'Nome atualizado com sucesso!';
-			action = 'success';
-			passwordFormData.reset({
-				password_old: '', // Clear the old password field
-				password: '', // Clear the new password field
-				password_confirm: '', // Clear the confirm password field
-			});
-			const updateUser = user;
-			updateUser.name = data.name;
-			await updateUserProfile(updateUser);
-		} catch (error) {
-			const isAppError = error instanceof AppError;
-			title = isAppError ? error.message : 'Não foi possivel atualizar a senha.';
-			action = 'error';
-		} finally {
-			toast.show({
-				placement: 'top',
-				render: ({ id }) => (
-					<ToastMessage
-						id={id}
-						action={action}
-						title={title}
-						onClose={() => toast.close(id)}
-					/>
-				),
-			});
-			setIsLoading(false);
-		}
-	}
-
-	async function handlePasswordUpdate(data: PasswordDataProps) {
-		let title = '';
-		let action: 'success' | 'error' | undefined = 'success';
-		try {
-			setIsLoading(true);
-			await api.put('/users', {
-				password: data.password,
-				old_password: data.password_old,
-			});
-			title = 'Senha atualizada com sucesso!';
-			action = 'success';
-		} catch (error) {
-			const isAppError = error instanceof AppError;
-			title = isAppError ? error.message : 'Não foi possivel atualizar a senha.';
-			action = 'error';
-		} finally {
-			passwordFormData.reset({
-				password_old: '', // Clear the old password field
-				password: '', // Clear the new password field
-				password_confirm: '', // Clear the confirm password field
-			});
-			toast.show({
-				placement: 'top',
-				render: ({ id }) => (
-					<ToastMessage
-						id={id}
-						action={action}
-						title={title}
-						onClose={() => toast.close(id)}
-					/>
-				),
-			});
-			setIsLoading(false);
-		}
-	}
 
 	async function handleUserPhotoSelect() {
 		try {
@@ -170,18 +98,91 @@ export function Profile() {
 						),
 					});
 				}
+				const fileExtension = photoSelected.assets[0].uri.split('.').pop();
+				const photoFile = {
+					name: `${user.name}.${fileExtension}`.toLowerCase(),
+					uri: photoSelected.assets[0].uri,
+					type: `${photoSelected.assets[0].type}/${fileExtension}`,
+				} as any;
 
-				setUserPhoto(photoUri);
+				const userPhotoUploadForm = new FormData();
+
+				userPhotoUploadForm.append('avatar', photoFile);
+
+				const avatarUpdatedResponse = await api.patch(
+					'/users/avatar',
+					userPhotoUploadForm,
+					{
+						headers: {
+							'Content-Type': 'multipart/form-data',
+						},
+					},
+				);
+
+				const userUpdated = user;
+				userUpdated.avatar = avatarUpdatedResponse.data.avatar;
+				updateUserProfile(userUpdated);
+
+				toast.show({
+					placement: 'top',
+					render: ({ id }) => (
+						<ToastMessage
+							id={id}
+							action="success"
+							title="Foto Atualizada!"
+							onClose={() => toast.close(id)}
+						/>
+					),
+				});
 			}
 		} catch (error) {
 			console.log(error);
 		}
 	}
 
+	async function handleProfileUpdate(data: FormDataProps) {
+		try {
+			setIsUpdating(true);
+			// console.log('send data => ', data)
+			await api.put('/users', data);
+			toast.show({
+				placement: 'top',
+				render: ({ id }) => (
+					<ToastMessage
+						id={id}
+						action="success"
+						title="Perfil Atualizado com sucesso"
+						onClose={() => toast.close(id)}
+					/>
+				),
+			});
+			const updateUser = user;
+			updateUser.name = data.name ?? user.name;
+			updateUserProfile(updateUser);
+		} catch (error) {
+			const isAppError = error instanceof AppError;
+			toast.show({
+				placement: 'top',
+				render: ({ id }) => (
+					<ToastMessage
+						id={id}
+						action="error"
+						title={
+							isAppError ? error.message : 'Não foi possivel atualizar os dados.'
+						}
+						onClose={() => toast.close(id)}
+					/>
+				),
+			});
+		} finally {
+			setIsUpdating(false);
+		}
+	}
+
 	return (
 		<GS.VStack>
 			<ScreenHeader title="Perfil" />
-			{isLoading ? (
+			{isUpdating ? (
 				<GS.VStack mt="$20" alignItems="center" justifyContent="center">
 					<Loading />
 				</GS.VStack>
@@ -189,9 +190,11 @@ export function Profile() {
 				<ScrollView contentContainerStyle={{ paddingBottom: 36 }}>
 					<GS.Center mt="$6" mb="$20" px="$10">
 						<UserPhoto
-							source={{
-								uri: userPhoto,
-							}}
+							source={
+								user.avatar
+									? { uri: `${api.defaults.baseURL}/avatar/${user.avatar}` }
+									: defaultUserPhotoImg
+							}
 							alt="Foto do usuário"
 							size="xl"
 						/>
@@ -209,7 +212,7 @@ export function Profile() {
 
 						<GS.Center w="$full" gap="$4">
 							<Controller
-								control={userFormData.control}
+								control={control}
 								name="name"
 								render={({ field: { onChange, value } }) => (
 									<Input
@@ -217,12 +220,12 @@ export function Profile() {
 										bg="$gray600"
 										onChangeText={onChange}
 										value={value}
-										errorMessage={userFormData.formState.errors.name?.message}
+										errorMessage={errors.name?.message}
 									/>
 								)}
 							/>
 							<Controller
-								control={userFormData.control}
+								control={control}
 								name="email"
 								render={({ field: { onChange, value } }) => (
 									<Input
@@ -250,8 +253,8 @@ export function Profile() {
 						</GS.Heading>
 						<GS.Center w="$full" gap="$4" pb="$10">
 							<Controller
-								control={passwordFormData.control}
-								name="password_old"
+								control={control}
+								name="old_password"
 								render={({ field: { onChange, value } }) => (
 									<Input
 										placeholder="Senha antiga"
@@ -259,14 +262,11 @@ export function Profile() {
 										secureTextEntry
 										onChangeText={onChange}
 										value={value}
-										errorMessage={
-											passwordFormData.formState.errors.password_old?.message
-										}
 									/>
 								)}
 							/>
 							<Controller
-								control={passwordFormData.control}
+								control={control}
 								name="password"
 								render={({ field: { onChange, value } }) => (
 									<Input
@@ -274,42 +274,29 @@ export function Profile() {
 										bg="$gray600"
 										secureTextEntry
 										onChangeText={onChange}
-										value={value}
-										errorMessage={
-											passwordFormData.formState.errors.password?.message
-										}
+										value={value === null ? undefined : value}
+										errorMessage={errors.password?.message}
 									/>
 								)}
 							/>
 							<Controller
-								control={passwordFormData.control}
-								name="password_confirm"
+								control={control}
+								name="confirm_password"
 								render={({ field: { onChange, value } }) => (
 									<Input
 										placeholder="Confirmar senha"
 										bg="$gray600"
 										secureTextEntry
 										onChangeText={onChange}
-										value={value}
-										errorMessage={
-											passwordFormData.formState.errors.password_confirm?.message
-										}
+										value={value === null ? undefined : value}
+										errorMessage={errors.confirm_password?.message}
 									/>
 								)}
 							/>
 							<Button
 								title="Atualizar"
-								onPress={() => {
-									const currentName = userFormData.getValues('name');
-									if (currentName !== initialName) {
-										// If the name has changed, submit the user form
-										userFormData.handleSubmit(handleProfileUpdate)();
-									} else {
-										// If the name has not changed, submit the password form
-										passwordFormData.handleSubmit(handlePasswordUpdate)();
-									}
-								}}
-								isLoading={isLoading}
+								onPress={handleSubmit(handleProfileUpdate)}
+								isLoading={isUpdating}
 							/>
 						</GS.Center>
 					</GS.Center>
